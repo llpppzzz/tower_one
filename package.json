@@ -1,0 +1,10 @@
+{
+  "name": "astral-rift",
+  "version": "1.0.0",
+  "private": true,
+  "description": "星轨防线 — 霓虹科幻塔防 · 动态波次 · 战术协议 · 永久星核强化",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  }
+}

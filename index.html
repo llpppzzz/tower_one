@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#050810" />
+  <title>星轨防线 · ASTRAL RIFT</title>
+  <meta name="description" content="星轨防线：一款带有协议构筑、动态波次与星核强化的霓虹科幻塔防游戏。" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%23050b14'/%3E%3Cpath d='M32 7 53 19v26L32 57 11 45V19L32 7Z' fill='none' stroke='%2354e7ff' stroke-width='2'/%3E%3Cpath d='m32 18 12 7v14l-12 7-12-7V25l12-7Z' fill='none' stroke='%239ffbff' stroke-width='1.4'/%3E%3Ccircle cx='32' cy='32' r='4' fill='%238ff4ff'/%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="app">
+    <canvas id="game" aria-label="星轨防线游戏场景"></canvas>
+    <canvas id="bloom" aria-hidden="true"></canvas>
+
+    <div class="scene-fx" aria-hidden="true">
+      <div class="fx-grain"></div>
+      <div class="fx-scan"></div>
+      <div class="fx-vignette"></div>
+      <div class="fx-chroma" id="chromaFx"></div>
+      <div class="fx-flash" id="damageFlash"></div>
+    </div>
+
+    <div id="aimCursor" class="aim-cursor" aria-hidden="true">
+      <span class="aim-dot"></span>
+      <span class="aim-bracket aim-bracket-a"></span>
+      <span class="aim-bracket aim-bracket-b"></span>
+    </div>
+
+    <div id="hud" class="hud is-hidden">
+      <header class="topbar">
+        <div class="brand-compact">
+          <div class="brand-mark"><svg><use href="#i-core"></use></svg></div>
+          <div class="brand-type">
+            <b>ASTRAL RIFT</b>
+            <span>星轨防线</span>
+          </div>
+        </div>
+
+        <div class="top-stat wave-stat">
+          <span class="top-label">SECTOR WAVE</span>
+          <div class="wave-line"><b id="waveValue">01</b><span id="waveTotal">/ 30</span></div>
+          <div class="mini-track"><i id="waveProgress"></i></div>
+        </div>
+
+        <div class="top-stat core-stat">
+          <span class="top-label">CORE INTEGRITY <em id="corePercent">100%</em></span>
+          <div class="core-health">
+            <div class="core-health-fill" id="coreHealthFill"></div>
+            <div class="core-health-grid"></div>
+          </div>
+          <div class="core-health-copy"><b id="coreHealthText">100</b><span> / <i id="coreHealthMax">100</i></span></div>
+        </div>
+
+        <div class="top-stat credit-stat">
+          <span class="top-label">CREDITS</span>
+          <div class="credit-line"><svg class="credit-icon"><use href="#i-credit"></use></svg><b id="creditValue">320</b><span class="credit-delta" id="creditDelta"></span></div>
+        </div>
+
+        <div class="top-actions">
+          <button class="icon-btn" id="soundBtn" aria-label="切换声音" title="声音">
+            <svg class="sound-on"><use href="#i-sound"></use></svg>
+            <svg class="sound-off"><use href="#i-mute"></use></svg>
+          </button>
+          <button class="speed-btn" id="speedBtn" title="游戏速度 (F)"><span id="speedValue">1×</span><small>SPEED</small></button>
+          <button class="icon-btn pause-btn" id="pauseBtn" aria-label="暂停" title="暂停 (空格)">
+            <svg><use href="#i-pause"></use></svg>
+          </button>
+        </div>
+      </header>
+
+      <section class="side-panel" id="sidePanel">
+        <div class="panel-notch" aria-hidden="true"></div>
+        <header class="panel-header">
+          <div>
+            <span class="panel-eyebrow">DEFENSE ARRAY</span>
+            <h2>部署矩阵</h2>
+          </div>
+          <div class="panel-live"><i></i> LINKED</div>
+        </header>
+
+        <div class="panel-scroll" id="panelScroll">
+        <div class="tower-shop" id="towerShop"></div>
+
+        <div class="panel-divider"><span></span><i>FIELD INTEL</i><span></span></div>
+
+        <div class="wave-intel" id="waveIntel">
+          <div class="intel-top">
+            <div>
+              <span class="intel-kicker">INCOMING SIGNAL</span>
+              <h3 id="intelTitle">第 1 波 · 校准脉冲</h3>
+            </div>
+            <div class="threat-chip" id="threatChip">LOW</div>
+          </div>
+          <div class="intel-enemies" id="intelEnemies"></div>
+          <div class="intel-modifier" id="intelModifier">
+            <svg><use href="#i-signal"></use></svg>
+            <span>裂隙稳定，无异常信号。</span>
+          </div>
+          <div class="wave-timer-row">
+            <span id="waveStatusText">等待部署</span>
+            <b id="waveKillText">0 / 0</b>
+          </div>
+          <div class="wave-track"><i id="waveTrackFill"></i></div>
+        </div>
+
+        <div class="tower-detail is-hidden" id="towerDetail">
+          <div class="detail-head">
+            <div class="detail-icon" id="detailIcon"></div>
+            <div>
+              <span class="intel-kicker">SELECTED UNIT</span>
+              <h3 id="detailName">脉冲炮塔</h3>
+              <p id="detailRole">单体 · 高射速</p>
+            </div>
+            <button class="close-detail" id="closeDetail" aria-label="取消选择">×</button>
+          </div>
+          <div class="detail-level">
+            <span>同步等级</span>
+            <div class="level-pips" id="detailLevel"></div>
+            <b id="detailDps">DPS 27</b>
+          </div>
+          <div class="detail-stats">
+            <div><span>伤害</span><b id="detailDamage">15</b></div>
+            <div><span>射程</span><b id="detailRange">210</b></div>
+            <div><span>射速</span><b id="detailRate">1.8/s</b></div>
+          </div>
+          <div class="detail-mode-row">
+            <span>瞄准协议</span>
+            <button id="targetModeBtn">最前目标 <i>↻</i></button>
+          </div>
+          <div class="detail-actions">
+            <button class="btn-upgrade" id="upgradeBtn"><span>同步强化</span><b id="upgradeCost">80</b></button>
+            <button class="btn-sell" id="sellBtn" title="回收单位"><span>回收</span><b id="sellValue">+63</b></button>
+          </div>
+        </div>
+
+        <div class="protocol-summary" id="protocolSummary"></div>
+        </div>
+
+        <div class="start-zone" id="startZone">
+          <button class="start-wave-btn" id="startWaveBtn">
+            <span class="start-sheen"></span>
+            <span class="start-icon"><svg><use href="#i-chevrons"></use></svg></span>
+            <span class="start-copy"><small>ENGAGE NEXT WAVE</small><b id="startWaveLabel">启动第 1 波</b></span>
+            <span class="start-arrow">→</span>
+          </button>
+          <p class="start-hint" id="startHint">部署完成后启动波次 · 空格暂停</p>
+        </div>
+      </section>
+
+      <div class="combo-hud" id="comboHud">
+        <span class="combo-label">FLOW</span>
+        <b id="comboValue">×1.0</b>
+        <div class="combo-track"><i id="comboFill"></i></div>
+        <small id="comboCount">0 CHAIN</small>
+      </div>
+
+      <div class="ability-dock" id="abilityDock">
+        <div class="ability-head">
+          <span>TACTICAL COMMAND</span>
+          <small>战术指令</small>
+        </div>
+        <div class="ability-list" id="abilityList"></div>
+      </div>
+
+      <div class="status-ribbon" id="statusRibbon">
+        <span class="status-dot"></span>
+        <span id="statusRibbonText">星核稳定 · 防线待命</span>
+      </div>
+
+      <div class="hint-card" id="hintCard">
+        <button class="hint-close" id="hintClose" aria-label="关闭提示">×</button>
+        <span class="hint-index">FIELD NOTE</span>
+        <p id="hintText">点击右侧炮塔，再点击地图上的空地完成部署。</p>
+      </div>
+
+    </div>
+
+    <div class="toast-stack" id="toastStack" aria-live="polite"></div>
+
+    <div class="screen-transition" id="screenTransition"><span></span></div>
+
+    <section id="menu" class="screen menu-screen">
+      <div class="menu-grid">
+        <div class="menu-copy">
+          <div class="menu-kicker"><i></i> DEEP SPACE DEFENSE NETWORK <em>// NODE 07</em></div>
+          <h1 class="game-title">
+            <span class="title-en" data-text="ASTRAL RIFT">ASTRAL RIFT</span>
+            <span class="title-cn">星轨防线</span>
+          </h1>
+          <p class="menu-lede">
+            裂隙正在吞噬最后的星核。部署防御矩阵，改写战术协议，
+            在会学习的潮汐中守住这一束光。
+          </p>
+
+          <div class="menu-actions">
+            <button class="primary-btn" id="newRunBtn">
+              <span class="btn-glow"></span>
+              <span class="primary-icon"><svg><use href="#i-play"></use></svg></span>
+              <span class="primary-copy"><small>INITIALIZE NEW SIGNAL</small><b>启动新序列</b></span>
+              <span class="primary-arrow">↗</span>
+            </button>
+            <button class="secondary-btn is-hidden" id="continueBtn">
+              <span class="continue-icon"><svg><use href="#i-resume"></use></svg></span>
+              <span><small>RESTORE CHECKPOINT</small><b>继续行动</b></span>
+              <em id="continueMeta">WAVE 01</em>
+            </button>
+          </div>
+
+          <div class="difficulty-row">
+            <span class="difficulty-label">威胁协议</span>
+            <div class="difficulty-switch" id="difficultySwitch">
+              <button class="is-active" data-difficulty="standard">标准 <small>+100%</small></button>
+              <button data-difficulty="abyss" id="abyssDifficulty">深渊 <small>+35% HP</small><svg><use href="#i-lock"></use></svg></button>
+            </div>
+          </div>
+
+          <div class="menu-stats" id="menuStats"></div>
+        </div>
+
+        <aside class="meta-panel">
+          <div class="corner tl"></div><div class="corner tr"></div><div class="corner bl"></div><div class="corner br"></div>
+          <header class="meta-head">
+            <div>
+              <span class="panel-eyebrow">PERSISTENT SYSTEM</span>
+              <h2>星核强化</h2>
+            </div>
+            <div class="shard-balance">
+              <svg><use href="#i-shard"></use></svg>
+              <b id="shardValue">0</b>
+              <span>星尘</span>
+            </div>
+          </header>
+          <p class="meta-intro">星尘会跨越每一次失败与胜利永久保留。强化星核，让下一次防线更远。</p>
+          <div class="meta-list" id="metaList"></div>
+          <div class="meta-footer">
+            <span><i></i> 自动同步已启用</span>
+            <small>v1.0 // RIFT PROTOCOL</small>
+          </div>
+        </aside>
+      </div>
+
+      <footer class="menu-footer">
+        <div class="footer-controls">
+          <span><kbd>1</kbd>–<kbd>5</kbd> 部署</span>
+          <span><kbd>Q</kbd><kbd>W</kbd><kbd>E</kbd> 战术</span>
+          <span><kbd>F</kbd> 加速</span>
+          <span><kbd>SPACE</kbd> 暂停</span>
+        </div>
+        <div class="footer-signal"><i></i> SIGNAL STABLE <b>·</b> AWAITING COMMAND</div>
+      </footer>
+    </section>
+
+    <div id="waveBanner" class="wave-banner" aria-hidden="true">
+      <div class="banner-rule"><span></span><i></i><span></span></div>
+      <div class="banner-copy">
+        <small id="bannerKicker">HOSTILE SIGNAL DETECTED</small>
+        <h2 id="bannerTitle">WAVE 01</h2>
+        <p id="bannerSub">校准脉冲</p>
+      </div>
+      <div class="banner-rule"><span></span><i></i><span></span></div>
+    </div>
+
+    <div id="bossWarning" class="boss-warning" aria-hidden="true">
+      <div class="boss-stripes"></div>
+      <div class="boss-warning-copy">
+        <span>⚠ MASSIVE RIFT SIGNATURE ⚠</span>
+        <h2 id="bossWarningTitle">裂隙级威胁接近</h2>
+        <p id="bossWarningSub">BOSS INBOUND // BRACE FOR IMPACT</p>
+      </div>
+      <div class="boss-stripes"></div>
+    </div>
+
+    <section id="draftOverlay" class="screen modal-screen is-hidden" aria-label="选择战术协议">
+      <div class="draft-shell">
+        <header class="draft-head">
+          <div>
+            <span class="panel-eyebrow">WAVE CLEARED // PROTOCOL AVAILABLE</span>
+            <h2>选择一项<span>战术协议</span></h2>
+          </div>
+          <div class="draft-wave">
+            <small>波次奖励</small>
+            <b id="draftCredits">+80</b>
+            <span>CREDITS SECURED</span>
+          </div>
+        </header>
+        <div class="draft-grid" id="draftGrid"></div>
+        <div class="draft-footer">
+          <div class="draft-tip"><i></i> 协议效果会在本次行动中永久叠加</div>
+          <button class="reroll-btn" id="rerollBtn"><svg><use href="#i-reroll"></use></svg><span>重构协议</span><b id="rerollCost">40</b></button>
+        </div>
+      </div>
+    </section>
+
+    <section id="pauseOverlay" class="screen modal-screen is-hidden" aria-label="游戏暂停">
+      <div class="pause-panel">
+        <span class="panel-eyebrow">SYSTEM HOLD // TEMPORAL LOCK</span>
+        <h2>行动暂停</h2>
+        <p>裂隙暂时冻结。你的部署与进度已自动同步。</p>
+        <div class="pause-stats" id="pauseStats"></div>
+        <div class="pause-actions">
+          <button class="primary-btn compact" id="resumeBtn"><span class="primary-copy"><small>RESUME OPERATION</small><b>继续行动</b></span><span class="primary-arrow">→</span></button>
+          <button class="ghost-btn" id="saveBtn"><svg><use href="#i-save"></use></svg> 保存并退出</button>
+          <button class="ghost-btn danger" id="abandonBtn">放弃行动</button>
+        </div>
+        <div class="pause-settings">
+          <label class="switch-row"><span>屏幕震动</span><input type="checkbox" id="shakeToggle" checked /><i></i></label>
+          <label class="switch-row"><span>动态模糊 / 泛光</span><input type="checkbox" id="bloomToggle" checked /><i></i></label>
+          <label class="switch-row"><span>环境音轨</span><input type="checkbox" id="musicToggle" checked /><i></i></label>
+        </div>
+      </div>
+    </section>
+
+    <section id="endOverlay" class="screen modal-screen is-hidden" aria-label="行动结算">
+      <div class="end-panel">
+        <div class="end-glyph" id="endGlyph"><svg><use href="#i-core"></use></svg></div>
+        <span class="panel-eyebrow" id="endKicker">SIGNAL LOST // CORE BREACH</span>
+        <h2 id="endTitle">防线失守</h2>
+        <p id="endSub">星核在裂隙潮汐中熄灭。但数据已回传。</p>
+        <div class="end-stats" id="endStats"></div>
+        <div class="end-reward">
+          <span>回收星尘</span>
+          <b id="endShards">+0</b>
+          <small>用于永久强化</small>
+        </div>
+        <div class="end-actions">
+          <button class="primary-btn compact" id="retryBtn"><span class="primary-copy"><small>REINITIALIZE</small><b>再次出击</b></span><span class="primary-arrow">↗</span></button>
+          <button class="ghost-btn endless-btn is-hidden" id="endlessBtn"><svg><use href="#i-nova"></use></svg> 进入无尽回响</button>
+          <button class="ghost-btn" id="menuBtn">返回主界面</button>
+        </div>
+      </div>
+    </section>
+
+    <div id="rotateHint"><svg><use href="#i-rotate"></use></svg><span>建议横屏以获得完整战术视野</span></div>
+  </div>
+
+  <svg class="svg-defs" aria-hidden="true">
+    <symbol id="i-core" viewBox="0 0 24 24"><path d="M12 1.8 21 7v10l-9 5.2L3 17V7l9-5.2Z" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="m12 5 5.6 3.2v7.6L12 19l-5.6-3.2V8.2L12 5Z" fill="none" stroke="currentColor" stroke-width="1.1"/><circle cx="12" cy="12" r="2.4" fill="currentColor"/></symbol>
+    <symbol id="i-credit" viewBox="0 0 24 24"><path d="m12 2 7 6.2-2.2 10.1L12 22l-4.8-3.7L5 8.2 12 2Z" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="m12 6 3.8 3.4L14.5 15H9.5L8.2 9.4 12 6Z" fill="currentColor" opacity=".8"/></symbol>
+    <symbol id="i-shard" viewBox="0 0 24 24"><path d="M12 1 20 9l-8 14L4 9 12 1Z" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="m12 6 4 4-4 7-4-7 4-4Z" fill="currentColor"/></symbol>
+    <symbol id="i-pulse" viewBox="0 0 32 32"><circle cx="16" cy="16" r="11" fill="none" stroke="currentColor" stroke-width="1.2" opacity=".45"/><circle cx="16" cy="16" r="6.5" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="16" cy="16" r="2.3" fill="currentColor"/><path d="M16 2v7M16 23v7M2 16h7M23 16h7" stroke="currentColor" stroke-width="1.4"/></symbol>
+    <symbol id="i-prism" viewBox="0 0 32 32"><path d="m16 3 12 22H4L16 3Z" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="m16 9 6.5 12h-13L16 9Z" fill="none" stroke="currentColor" stroke-width="1" opacity=".55"/><path d="m18 11-5 7h3l-2 5 6-8h-3l1-4Z" fill="currentColor"/></symbol>
+    <symbol id="i-mortar" viewBox="0 0 32 32"><path d="m16 4 10 5.8v12.4L16 28 6 22.2V9.8L16 4Z" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M11 20c3.5-6 7-7 11-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="21.5" cy="12" r="2.8" fill="none" stroke="currentColor" stroke-width="1.2"/><path d="M21.5 6.5v2M27 12h-2M25.5 8.5l-1.4 1.4M17.5 8.5l1.4 1.4" stroke="currentColor" stroke-width="1.2"/></symbol>
+    <symbol id="i-cryo" viewBox="0 0 32 32"><path d="M16 3v26M5 9.5l22 13M27 9.5l-22 13" stroke="currentColor" stroke-width="1.3"/><path d="M16 8l-3-3M16 8l3-3M16 24l-3 3M16 24l3 3M8.4 12.2 5.7 12M11 7.5 9 4.8M23.6 12.2l2.7-.2M21 7.5l2-2.7M8.4 19.8 5.7 20M11 24.5 9 27.2M23.6 19.8l2.7.2M21 24.5l2 2.7" stroke="currentColor" stroke-width="1.1"/><circle cx="16" cy="16" r="3" fill="currentColor"/></symbol>
+    <symbol id="i-rail" viewBox="0 0 32 32"><path d="M7 5v22M13 5v22M22 5v22M28 5v22" stroke="currentColor" stroke-width="1.2" opacity=".5"/><path d="M5 16h22M9 11l-4 5 4 5M23 11l4 5-4 5" stroke="currentColor" stroke-width="1.6"/><path d="M13 16h6" stroke="currentColor" stroke-width="4" stroke-linecap="round"/></symbol>
+    <symbol id="i-nova" viewBox="0 0 32 32"><circle cx="16" cy="16" r="4" fill="currentColor"/><path d="M16 2v6M16 24v6M2 16h6M24 16h6M6.1 6.1l4.2 4.2M21.7 21.7l4.2 4.2M25.9 6.1l-4.2 4.2M10.3 21.7l-4.2 4.2" stroke="currentColor" stroke-width="1.4"/><circle cx="16" cy="16" r="9" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="2 4" opacity=".6"/></symbol>
+    <symbol id="i-overclock" viewBox="0 0 32 32"><path d="M16 4a12 12 0 1 0 12 12" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M16 4a12 12 0 0 1 12 12" fill="none" stroke="currentColor" stroke-width="2.4"/><path d="m18 8-7 10h5l-2 7 7-11h-5l2-6Z" fill="currentColor"/><circle cx="16" cy="16" r="2" fill="currentColor"/></symbol>
+    <symbol id="i-chrono" viewBox="0 0 32 32"><circle cx="16" cy="16" r="12" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="16" cy="16" r="8.5" fill="none" stroke="currentColor" stroke-width=".8" stroke-dasharray="2 3" opacity=".7"/><path d="M16 8v8l5 3" fill="none" stroke="currentColor" stroke-width="2"/><path d="M23 4l3 3M9 4 6 7" stroke="currentColor" stroke-width="1.4"/></symbol>
+    <symbol id="i-chevrons" viewBox="0 0 24 24"><path d="m4 5 8 7-8 7M12 5l8 7-8 7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5v14l11-7L8 5Z" fill="currentColor"/></symbol>
+    <symbol id="i-resume" viewBox="0 0 24 24"><path d="M4 4v16l8-5 8 5V4l-8 5-8-5Z" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M12 9v7" stroke="currentColor" stroke-width="1.3"/></symbol>
+    <symbol id="i-pause" viewBox="0 0 24 24"><path d="M8 5v14M16 5v14" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></symbol>
+    <symbol id="i-sound" viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9H4Z" fill="currentColor"/><path d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8 8 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
+    <symbol id="i-mute" viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9H4Z" fill="currentColor"/><path d="m16 9 5 6M21 9l-5 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
+    <symbol id="i-signal" viewBox="0 0 24 24"><path d="M3 17h3l2-7 3 11 3-15 3 11h4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="10" rx="2" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M8 10V7a4 4 0 0 1 8 0v3" fill="none" stroke="currentColor" stroke-width="1.4"/></symbol>
+    <symbol id="i-save" viewBox="0 0 24 24"><path d="M4 4h13l3 3v13H4V4Z" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M8 4v6h8V4M8 20v-6h8v6" fill="none" stroke="currentColor" stroke-width="1.3"/></symbol>
+    <symbol id="i-reroll" viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 1-2.4-5.7M20 4v7h-7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></symbol>
+    <symbol id="i-rotate" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="2" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M9 17h6" stroke="currentColor" stroke-width="1.4"/></symbol>
+    <symbol id="i-bolt" viewBox="0 0 24 24"><path d="m13 2-8 12h6l-1 8 8-12h-6l1-8Z" fill="currentColor"/></symbol>
+    <symbol id="i-heart" viewBox="0 0 24 24"><path d="M12 20S3 14.5 3 8.5A4.5 4.5 0 0 1 12 6a4.5 4.5 0 0 1 9 2.5C21 14.5 12 20 12 20Z" fill="none" stroke="currentColor" stroke-width="1.4"/></symbol>
+  </svg>
+
+  <script src="js/audio.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/game.js"></script>
+</body>
+</html>
