@@ -1445,3 +1445,110 @@ svg{display:block;width:1em;height:1em}
   .ability-head span,.ability-head small{color:#7da0b2}
   .top-label{color:#86a8bb}
 }
+
+/* larger tactical command block + readable status line */
+@media (min-width:1101px){
+  .ability-dock{width:430px;padding:14px;bottom:26px}
+  .ability-head{padding:0 2px 10px}
+  .ability-head span{font-size:11px;letter-spacing:.1em;color:#96bfd0}
+  .ability-head small{font-size:10.5px;color:#7b9fb1;letter-spacing:.08em}
+  .ability-list{gap:9px}
+  .ability-btn{min-height:92px;padding:11px}
+  .ability-icon{width:32px;height:32px}
+  .ability-icon svg{width:19px;height:19px}
+  .ability-copy b{font-size:13px;letter-spacing:.06em}
+  .ability-copy small{font-size:9.5px;color:#89adbf}
+  .ability-key{font-size:10px;padding:3px 6px;color:#a6c7d6}
+  .ability-cd{font-size:20px}
+  .status-ribbon{
+    bottom:182px;min-height:29px;padding:8px 13px;display:inline-flex;
+    border:1px solid rgba(84,231,255,.17);border-left:2px solid rgba(84,231,255,.75);
+    background:linear-gradient(90deg,rgba(10,30,45,.82),rgba(6,15,26,.58));
+    font-size:11.5px;line-height:1;letter-spacing:.03em;color:#c2e4ef;
+    box-shadow:0 8px 25px rgba(0,0,0,.22);backdrop-filter:blur(8px);
+  }
+  .status-dot{width:6px;height:6px}
+  .hint-card{bottom:224px}
+}
+
+@media (min-width:901px) and (max-width:1100px){
+  .ability-dock{width:380px;padding:12px;bottom:20px}
+  .ability-head{padding-bottom:8px}
+  .ability-head span{font-size:10px;color:#96bfd0}
+  .ability-head small{font-size:9.5px;color:#7b9fb1}
+  .ability-list{gap:7px}
+  .ability-btn{min-height:80px;padding:9px}
+  .ability-icon{width:28px;height:28px}
+  .ability-copy b{font-size:11.5px}
+  .ability-copy small{font-size:8.5px;color:#89adbf}
+  .ability-key{font-size:9px;padding:2px 5px}
+  .ability-cd{font-size:18px}
+  .status-ribbon{
+    bottom:154px;min-height:27px;padding:7px 11px;display:inline-flex;
+    border:1px solid rgba(84,231,255,.16);border-left:2px solid rgba(84,231,255,.7);
+    background:linear-gradient(90deg,rgba(10,30,45,.82),rgba(6,15,26,.58));
+    font-size:10.5px;letter-spacing:.02em;color:#c2e4ef;
+  }
+  .status-dot{width:5px;height:5px}
+  .hint-card{bottom:192px}
+}
+
+@media (max-width:900px){
+  .ability-dock{width:310px;padding:10px;bottom:16px}
+  .ability-head{padding-bottom:7px}
+  .ability-head span{font-size:9px;color:#96bfd0}
+  .ability-head small{font-size:8.5px;color:#7b9fb1}
+  .ability-list{gap:6px}
+  .ability-btn{min-height:70px;padding:8px}
+  .ability-icon{width:25px;height:25px}
+  .ability-copy b{font-size:10.5px}
+  .ability-key{font-size:8.5px}
+  .ability-cd{font-size:17px}
+  .status-ribbon{
+    bottom:128px;min-height:25px;padding:6px 10px;display:inline-flex;
+    border:1px solid rgba(84,231,255,.16);border-left:2px solid rgba(84,231,255,.7);
+    background:linear-gradient(90deg,rgba(10,30,45,.82),rgba(6,15,26,.58));
+    font-size:10px;letter-spacing:.02em;color:#c2e4ef;
+  }
+  .hint-card{bottom:162px}
+}
+
+@media (max-width:720px){
+  .ability-dock{width:270px;bottom:12px;padding:8px}
+  .ability-btn{min-height:60px;padding:7px}
+  .ability-copy b{font-size:9.5px}
+  .ability-cd{font-size:15px}
+  .status-ribbon{display:none}
+  .hint-card{bottom:122px}
+}
+
+/* final emphasis on the requested tactical/status area */
+@media (min-width:1101px){
+  .ability-head span{font-size:12px;color:#a7cbda}
+  .ability-head small{font-size:11.5px;color:#8aadbe}
+  .ability-copy b{font-size:14px}
+  .ability-copy small{font-size:10px}
+  .ability-key{font-size:10.5px}
+  .status-ribbon{bottom:182px;min-height:31px;padding:9px 14px;font-size:12.5px;color:#d2edf5}
+  .hint-card{bottom:228px}
+}
+@media (min-width:901px) and (max-width:1100px){
+  .ability-head span{font-size:11px}
+  .ability-head small{font-size:10.5px}
+  .ability-copy b{font-size:12.5px}
+  .ability-copy small{font-size:9px}
+  .ability-key{font-size:9.5px}
+  .status-ribbon{bottom:154px;min-height:28px;padding:8px 12px;font-size:11.5px}
+  .hint-card{bottom:192px}
+}
+@media (max-width:900px){
+  .ability-head span{font-size:9.5px}
+  .ability-head small{font-size:9px}
+  .ability-copy b{font-size:11px}
+  .status-ribbon{font-size:10.5px;min-height:26px;padding:7px 11px}
+}
+
+@media (min-width:901px) and (max-width:1100px){
+  .status-ribbon{bottom:162px}
+  .hint-card{bottom:200px}
+}
