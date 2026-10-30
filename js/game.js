@@ -202,6 +202,7 @@
     sellBtn: $('#sellBtn'),
     sellValue: $('#sellValue'),
     closeDetail: $('#closeDetail'),
+    backDeployBtn: $('#backDeployBtn'),
     protocolSummary: $('#protocolSummary'),
     startZone: $('#startZone'),
     startWaveBtn: $('#startWaveBtn'),
@@ -1055,6 +1056,7 @@
     selectedTowerId = t.id;
     selectedBuildType = null;
     DOM.aim.classList.remove('is-placing', 'is-invalid');
+    DOM.canvas.classList.remove('is-invalid-cursor');
     updateShop();
     refreshTowerDetail();
     sfx('click');
@@ -1064,6 +1066,7 @@
     selectedBuildType = null;
     selectedTowerId = null;
     DOM.aim.classList.remove('is-placing', 'is-invalid');
+    DOM.canvas.classList.remove('is-invalid-cursor');
     updateShop();
     refreshTowerDetail();
   }
@@ -1073,12 +1076,14 @@
     if (!t || !run) {
       DOM.towerDetail.classList.add('is-hidden');
       DOM.waveIntel.classList.remove('is-hidden');
+      DOM.sidePanel.classList.remove('is-inspecting');
       return;
     }
     const def = TOWERS[t.type];
     const s = statForTower(t);
     DOM.towerDetail.classList.remove('is-hidden');
     DOM.waveIntel.classList.add('is-hidden');
+    DOM.sidePanel.classList.add('is-inspecting');
     DOM.detailIcon.style.color = def.color;
     DOM.detailIcon.innerHTML = `<svg><use href="#${def.icon}"></use></svg>`;
     DOM.detailName.textContent = def.name;
@@ -1117,6 +1122,7 @@
     selectedTowerId = t.id;
     selectedBuildType = null;
     DOM.aim.classList.remove('is-placing', 'is-invalid');
+    DOM.canvas.classList.remove('is-invalid-cursor');
     addRing(x, y, TOWERS[type].color, 12, 70, 0.55, 2);
     spawnParticles(x, y, TOWERS[type].color, 18, 120, { life: 0.7, size: 2 });
     sfx('place');
@@ -2980,7 +2986,7 @@
         const coreScreenX = view.offX + CORE_POS.x * view.scale;
         const safeX = panelRect.left - 112;
         if (coreScreenX > safeX) {
-          const minOffX = w - WORLD.w * view.scale;
+          const minOffX = w - WORLD.w * view.scale - 96;
           view.offX = Math.max(minOffX, view.offX - (coreScreenX - safeX));
         }
       }
@@ -3789,17 +3795,17 @@
       c.restore();
     }
     // health / shield bars
-    const damaged = e.hp < e.maxHp - 0.01 || e.elite || e.shield > 0;
+    const damaged = e.hp < e.maxHp - 0.5 || e.elite || (e.maxShield > 0 && e.shield < e.maxShield - 0.5);
     if (damaged) {
       const w = Math.max(24, r * 2.3);
       const hpR = clamp(e.hp / e.maxHp, 0, 1);
       const bx = e.x - w / 2, by = e.y - r - 15;
-      c.fillStyle = 'rgba(2,7,13,.75)';
+      c.fillStyle = 'rgba(5,14,22,.68)';
       c.fillRect(bx, by, w, 3);
       c.fillStyle = e.elite ? '#ffd47a' : e.color;
       c.fillRect(bx, by, w * hpR, 3);
       if (e.maxShield > 0) {
-        c.fillStyle = 'rgba(2,7,13,.75)';
+        c.fillStyle = 'rgba(5,14,22,.68)';
         c.fillRect(bx, by - 4, w, 2);
         c.fillStyle = '#76eaff';
         c.fillRect(bx, by - 4, w * clamp(e.shield / e.maxShield, 0, 1), 2);
@@ -4351,7 +4357,10 @@
   let hudDirty = false;
   let lastFpsNotify = 0;
 
-  function updatePointerFromEvent(e) {
+  let pendingPointerEvent = null;
+  let pointerRaf = 0;
+
+  function processPointerEvent(e) {
     const rect = DOM.canvas.getBoundingClientRect();
     const sx = e.clientX - rect.left;
     const sy = e.clientY - rect.top;
@@ -4360,15 +4369,7 @@
     pointer.y = (sy - view.offY) / view.scale;
     pointer.inside = true;
     pointer.valid = selectedBuildType ? canPlace(pointer.x, pointer.y) : false;
-
-    DOM.aim.style.transform = `translate3d(${e.clientX}px, ${e.clientY}px, 0)`;
-    if (state === 'menu' || paused || state === 'draft' || state === 'ending' || state === 'gameover' || state === 'victory') {
-      DOM.aim.classList.remove('is-visible');
-    } else {
-      DOM.aim.classList.add('is-visible');
-    }
-    DOM.aim.classList.toggle('is-placing', !!selectedBuildType);
-    DOM.aim.classList.toggle('is-invalid', !!selectedBuildType && !pointer.valid);
+    DOM.canvas.classList.toggle('is-invalid-cursor', !!selectedBuildType && !pointer.valid);
 
     if ((state === 'prep' || state === 'wave') && !selectedBuildType) {
       let nearest = null, nd = 36;
@@ -4382,6 +4383,17 @@
     }
   }
 
+  function queuePointerEvent(e) {
+    pendingPointerEvent = { clientX: e.clientX, clientY: e.clientY };
+    if (pointerRaf) return;
+    pointerRaf = requestAnimationFrame(() => {
+      pointerRaf = 0;
+      const ev = pendingPointerEvent;
+      pendingPointerEvent = null;
+      if (ev) processPointerEvent(ev);
+    });
+  }
+
   function onCanvasDown(e) {
     if (e.button === 2) {
       if (selectedBuildType || selectedTowerId) {
@@ -4392,7 +4404,7 @@
     }
     if (state !== 'prep' && state !== 'wave') return;
     tryUnlockAudio();
-    updatePointerFromEvent(e);
+    processPointerEvent(e);
     const near = towers.find(t => dist(pointer.x, pointer.y, t.x, t.y) < 38);
     if (selectedBuildType) {
       if (near) {
@@ -4430,12 +4442,13 @@
   function initEvents() {
     DOM.canvas.addEventListener('pointermove', e => {
       if (e.pointerType === 'touch' && e.buttons === 0) return;
-      updatePointerFromEvent(e);
+      queuePointerEvent(e);
     });
     DOM.canvas.addEventListener('pointerdown', onCanvasDown);
     DOM.canvas.addEventListener('pointerleave', () => {
       pointer.inside = false;
       hoverTowerId = null;
+      DOM.canvas.classList.remove('is-invalid-cursor');
       DOM.aim.classList.remove('is-visible');
     });
     DOM.canvas.addEventListener('contextmenu', e => e.preventDefault());
@@ -4525,6 +4538,7 @@
     DOM.sellBtn.addEventListener('click', sellSelected);
     DOM.detailModeBtn.addEventListener('click', cycleTargetMode);
     DOM.closeDetail.addEventListener('click', deselectAll);
+    DOM.backDeployBtn.addEventListener('click', deselectAll);
     DOM.hintClose.addEventListener('click', hideHint);
     DOM.rerollBtn.addEventListener('click', rerollDraft);
     DOM.draftGrid.addEventListener('click', e => {
